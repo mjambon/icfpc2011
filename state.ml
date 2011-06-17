@@ -133,6 +133,60 @@ let dec = Fun (
     identity
 )
 
+let attack = Fun (
+  fun game i ->
+    Fun (
+      fun game j ->
+        Fun (
+          fun game n ->
+            let pslot = get_slot (proponent game) (int i) in
+            let n = int n in
+            let v = pslot.vitality in
+            if n > v then
+              invalid_play ()
+            else
+              pslot.vitality <- v - n;
+
+            (* and then *)
+
+            if is_alive pslot then (
+              let oslot = get_slot (opponent game) (255 - int j) in
+              let w = oslot.vitality in
+              oslot.vitality <- max 0 (w - n * 9 / 10);
+            );
+
+            identity
+        )
+    )
+)
+
+let help = Fun (
+  fun game i ->
+    Fun (
+      fun game j ->
+        Fun (
+          fun game n ->
+            let pslot = get_slot (proponent game) (int i) in
+            let n = int n in
+            let v = pslot.vitality in
+            if n > v then
+              invalid_play ()
+            else
+              pslot.vitality <- v - n;
+
+            (* and then *)
+
+            if is_alive pslot then (
+              let oslot = get_slot (opponent game) (int j) in
+              let w = oslot.vitality in
+              oslot.vitality <- max 65535 (w + n * 11 / 10)
+            );
+            
+            identity
+        )
+    )
+)
+
 
 (*************************************************)
 
