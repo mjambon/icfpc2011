@@ -1,12 +1,20 @@
+open Printf
+
 exception Invalid_play
 
 let invalid_play () = raise Invalid_play
 
 let slots_len = 256
 
+(* Name used for closure tracking (printing and debugging) *)
+type name =
+    Int_name of int
+  | String_name of string
+  | App_name of name * name
+
 type value =
     Int of int
-  | Fun of (game -> value -> value)
+  | Fun of name * (game -> value -> value)
 
 and slot = {
   mutable vitality : int; (* -1 .. 65535 *)
@@ -57,10 +65,10 @@ let is_dead x = not (is_alive x)
 
 let int = function
     Int x -> x
-  | Fun _ -> invalid_play ()
+  | Fun (_, _) -> invalid_play ()
 
 let func = function
-    Fun x -> x
+    Fun (_, x) -> x
   | Int _ -> invalid_play ()
 
 let get_slot slots i =
@@ -75,7 +83,7 @@ let apply game x y =
     invalid_play ()
   else
     match x with
-        Fun f -> f game y
+        Fun (_, f) -> f game y
       | _ -> invalid_play ()
 
 let top_apply game x y =
@@ -83,23 +91,44 @@ let top_apply game x y =
   apply game x y
 
 
+(* Closure naming *)
+
+let name_of_value = function
+    Fun (x, _) -> x
+  | Int n -> Int_name n
+
+let app a b =
+  App_name (a, name_of_value b)
+
+let string_of_value x =
+  let rec print buf = function
+      Int_name n -> bprintf buf "%i" n
+    | String_name s -> bprintf buf "%s" s
+    | App_name (a, b) ->
+        bprintf buf "%a(%a)" print a print b
+  in
+  let buf = Buffer.create 100 in
+  print buf (name_of_value x);
+  Buffer.contents buf
+
+
 (* Card values *)
 
-let identity = Fun (fun game x -> x)
+let identity = Fun (String_name "I", fun game x -> x)
 
 let zero = Int 0
 
-let succ = Fun (
+let succ = Fun (String_name "succ",
   fun game x -> 
     Int (min (int x + 1) 65535)
 )
 
-let dbl = Fun (
+let dbl = Fun (String_name "dbl",
   fun game x ->
     Int (min (2 * int x) 65535)
 )
 
-let get = Fun (
+let get = Fun (String_name "get",
   fun game x ->
     let i = int x in
     let slot = get_slot (proponent game) i in
@@ -109,29 +138,40 @@ let get = Fun (
       invalid_play ()
 )
 
-let put = Fun (
+let put = Fun (String_name "put",
   fun game x -> identity
 )
 
-let scomb = Fun (
-  fun game f ->
-    Fun (
-      fun game g ->
-        Fun (
-          fun game x ->
-            let h = apply game f x in
-            let y = apply game g x in
-            apply game h y
-        )
-    )
+let scomb =
+  let name = String_name "S" in
+  Fun (
+    name,
+    fun game f ->
+      let name = app name f in
+      Fun (
+        name,
+        fun game g ->
+          let name = app name g in
+          Fun (
+            name,
+            fun game x ->
+              let h = apply game f x in
+              let y = apply game g x in
+              apply game h y
+          )
+      )
+  )
+
+let kcomb =
+  let name = String_name "K" in
+  Fun (
+    name,
+    fun game x ->
+      let name = app name x in
+      Fun (name, fun game y -> x)
 )
 
-let kcomb = Fun (
-  fun game x ->
-    Fun (fun game y -> x)
-)
-
-let inc = Fun (
+let inc = Fun (String_name "inc",
   fun game x ->
     let i = int x in
     let slot = get_slot (proponent game) i in
@@ -143,7 +183,7 @@ let inc = Fun (
     identity
 )
 
-let dec = Fun (
+let dec = Fun (String_name "dec",
   fun game x ->
     let i = int x in
     let slot = get_slot (opponent game) (255 - i) in
@@ -155,76 +195,91 @@ let dec = Fun (
     identity
 )
 
-let attack = Fun (
-  fun game i ->
-    Fun (
-      fun game j ->
-        Fun (
-          fun game n ->
-            let pslot = get_slot (proponent game) (int i) in
-            let n = int n in
-            let v = pslot.vitality in
-            if n > v then
-              invalid_play ()
-            else
-              pslot.vitality <- v - n;
-
-            (* and then *)
-
-            if is_alive pslot then (
-              let oslot = get_slot (opponent game) (255 - int j) in
-              let w = oslot.vitality in
-              if game.auto then (
-                if w > 0 then
-                  oslot.vitality <- min (w + n * 9 / 10) 65535
-              )
+let attack =
+  let name = String_name "attack" in
+  Fun (
+    name,
+    fun game i ->
+      let name = app name i in
+      Fun (
+        name,
+        fun game j ->
+          let name = app name j in
+          Fun (
+            name,
+            fun game n ->
+              let pslot = get_slot (proponent game) (int i) in
+              let n = int n in
+              let v = pslot.vitality in
+              if n > v then
+                invalid_play ()
               else
-                oslot.vitality <- max 0 (w - n * 9 / 10);
-            );
+                pslot.vitality <- v - n;
+              
+              (* and then *)
+              
+              if is_alive pslot then (
+                let oslot = get_slot (opponent game) (255 - int j) in
+                let w = oslot.vitality in
+                if game.auto then (
+                  if w > 0 then
+                    oslot.vitality <- min (w + n * 9 / 10) 65535
+                )
+                else
+                  oslot.vitality <- max 0 (w - n * 9 / 10);
+              );
+              
+              identity
+          )
+      )
+  )
+    
 
-            identity
-        )
-    )
-)
-
-let help = Fun (
-  fun game i ->
-    Fun (
-      fun game j ->
-        Fun (
-          fun game n ->
-            let pslot = get_slot (proponent game) (int i) in
-            let n = int n in
-            let v = pslot.vitality in
-            if n > v then
-              invalid_play ()
-            else
-              pslot.vitality <- v - n;
-
-            (* and then *)
-
-            if is_alive pslot then (
-              let oslot = get_slot (opponent game) (int j) in
-              let w = oslot.vitality in
-              if game.auto then (
-                if w > 0 then
-                  oslot.vitality <- max 0 (w - n * 11 / 10)
-              )
+let help =
+  let name = String_name "help" in
+  Fun (
+    name,
+    fun game i ->
+      let name = app name i in
+      Fun (
+        name,
+        fun game j ->
+          let name = app name j in
+          Fun (
+            name,
+            fun game n ->
+              let pslot = get_slot (proponent game) (int i) in
+              let n = int n in
+              let v = pslot.vitality in
+              if n > v then
+                invalid_play ()
               else
-                oslot.vitality <- min (w + n * 11 / 10) 65535
-            );
-            
-            identity
-        )
-    )
-)
+                pslot.vitality <- v - n;
+              
+              (* and then *)
+              
+              if is_alive pslot then (
+                let oslot = get_slot (opponent game) (int j) in
+                let w = oslot.vitality in
+                if game.auto then (
+                  if w > 0 then
+                    oslot.vitality <- max 0 (w - n * 11 / 10)
+                )
+                else
+                  oslot.vitality <- min (w + n * 11 / 10) 65535
+              );
+              
+              identity
+          )
+      )
+  )
 
-let copy = Fun (
+let copy = Fun (String_name "copy",
   fun game i ->
     (get_slot (opponent game) (int i)).field
 )
 
-let revive = Fun (
+let revive = Fun (String_name "revive",
   fun game i ->
     let slot = get_slot (proponent game) (int i) in
     let v = slot.vitality in
@@ -233,16 +288,31 @@ let revive = Fun (
     identity
 )
 
-let zombie = Fun (
-  fun game i ->
-    Fun (
-      fun game x ->
-        let oslot = get_slot (opponent game) (255 - int i) in
-        if is_dead oslot then
-          oslot.field <- x
-        else
-          invalid_play ();
-        oslot.vitality <- -1;
-        identity
-    )
-)
+let zombie =
+  let name = String_name "zombie" in
+  Fun (
+    name,
+    fun game i ->
+      let name = app name i in
+      Fun (
+        name,
+        fun game x ->
+          let oslot = get_slot (opponent game) (255 - int i) in
+          if is_dead oslot then
+            oslot.field <- x
+          else
+            invalid_play ();
+          oslot.vitality <- -1;
+          identity
+      )
+  )
+
+(* Printing and debugging *)
+
+let print_slots slots =
+  Array.iteri (
+    fun i slot ->
+      if slot.field != identity || slot.vitality <> 10_000 then
+        printf "%i={%i,%s}\n" i slot.vitality (string_of_value slot.field)
+  ) slots
+
