@@ -45,6 +45,7 @@ let is_alive x =
       -1 | 0 -> false
     | _ -> true
 
+let is_dead x = not (is_alive x)
 
 (* Access functions that may raise Invalid_play *)
 
@@ -184,6 +185,34 @@ let help = Fun (
             
             identity
         )
+    )
+)
+
+let copy = Fun (
+  fun game i ->
+    (get_slot (opponent game) (int i)).field
+)
+
+let revive = Fun (
+  fun game i ->
+    let slot = get_slot (proponent game) (int i) in
+    let v = slot.vitality in
+    if v <= 0 then
+      slot.vitality <- 1;
+    identity
+)
+
+let zombie = Fun (
+  fun game i ->
+    Fun (
+      fun game x ->
+        let oslot = get_slot (opponent game) (255 - int i) in
+        if is_dead oslot then
+          oslot.field <- x
+        else
+          invalid_play ();
+        oslot.vitality <- -1;
+        identity
     )
 )
 
