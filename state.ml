@@ -28,6 +28,10 @@ and game = {
 
 (* Access to player's data *)
 
+let int_of_player = function
+    Player0 -> 0
+  | Player1 -> 1
+
 let other_player = function
     Player0 -> Player1
   | Player1 -> Player0

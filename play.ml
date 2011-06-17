@@ -100,23 +100,46 @@ let card_value_of_symbol = function
   | Zombie -> zombie
 
 
-let input_play ic =
+let input_play interactive ic =
+  if interactive then
+    printf "(1) apply card to slot, or (2) apply slot to card?\n%!";
   let lr = left_or_right_of_string (input_line ic) in
-  let n = slot_number_of_string (input_line ic) in
-  let card_symbol = card_symbol_of_string (input_line ic) in
+  let card () =
+    if interactive then
+      printf "card name?\n%!";
+    card_symbol_of_string (input_line ic)
+  in
+  let n () =
+    if interactive then
+      printf "slot number?\n%!";
+    slot_number_of_string (input_line ic)
+  in
+  let n, card =
+    match lr with
+        Apply_card_to_slot ->
+          let card = card () in
+          let n = n () in
+          n, card
+      | Apply_slot_to_card ->
+          let n = n () in
+          let card = card () in
+          n, card
+  in
   {
     left_or_right = lr;
     slot_number = n;
-    card_symbol = card_symbol;
+    card_symbol = card;
   }
 
 let output_play oc x =
   if x.slot_number < 0 || x.slot_number >= slots_len then
     invalid_arg "output_play";
   fprintf oc "%s\n%!" (string_of_left_or_right x.left_or_right);
-  fprintf oc "%s\n%!" (string_of_int x.slot_number);
-  fprintf oc "%s\n%!" (string_of_card_symbol x.card_symbol)
-
+  let a () = fprintf oc "%s\n%!" (string_of_card_symbol x.card_symbol) in
+  let b () = fprintf oc "%s\n%!" (string_of_int x.slot_number) in
+  match x.left_or_right with
+      Apply_card_to_slot -> a (); b ()
+    | Apply_slot_to_card -> b (); a ()
 
 let slots_alive slots =
   Array.fold_left (fun acc x -> if is_alive x then acc + 1 else acc) 0 slots
@@ -166,7 +189,7 @@ let next_player game =
          game.turn_counter <- game.turn_counter + 1
   )
 
-let rec play_game game get0 print0 get1 print1 =
+let rec play_game game interactive get0 print0 get1 print1 =
   if game.turn_counter >= 100_000
     || all_dead game.player0
     || all_dead game.player1 then
@@ -174,6 +197,9 @@ let rec play_game game get0 print0 get1 print1 =
       let score1 = slots_alive game.player1 in
       score0, score1
   else (
+    if interactive then
+      printf "### Round %i, player %i ###\n%!"
+        game.turn_counter (int_of_player game.current_player);
     (match game.current_player with
          Player0 ->
            let play0 = get0 game in
@@ -185,7 +211,7 @@ let rec play_game game get0 print0 get1 print1 =
            print1 play1
     );
     next_player game;
-    play_game game get0 print0 get1 print1
+    play_game game interactive get0 print0 get1 print1
   )
 
 let init_slots () =

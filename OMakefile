@@ -1,6 +1,7 @@
 FILES[] =
   state
   play
+  strategy
   main
 
 USE_OCAMLFIND = true
