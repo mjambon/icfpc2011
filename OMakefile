@@ -1,0 +1,20 @@
+FILES[] =
+  state
+  main
+
+USE_OCAMLFIND = true
+BYTE_ENABLED = true
+OCAMLDEP_MODULES_ENABLED = false
+
+.DEFAULT: ltg.opt
+
+.PHONY: clean test
+
+clean:
+        rm -f *.o *.a *.cm* *~ *.annot *.opt *.run
+
+#USE_OCAMLFIND = true
+#OCAMLPACKS = pcre
+OCAMLFLAGS = -dtypes -g
+
+OCamlProgram(ltg, $(FILES))
