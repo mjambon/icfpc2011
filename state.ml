@@ -22,6 +22,8 @@ and game = {
   player1 : slots;
   mutable turn_counter : int;
   mutable current_player : player_id;
+  mutable app_counter : int;
+  mutable auto : bool; (* auto-application (modifies behavior of some cards) *)
 }
 
 (* Access to player's data *)
@@ -64,9 +66,18 @@ let get_slot slots i =
     slots.(i)
 
 let apply game x y =
-  match x with
-      Fun f -> f game y
-    | _ -> invalid_play ()
+  game.app_counter <- game.app_counter + 1;
+  if game.app_counter > 1000 then
+    invalid_play ()
+  else
+    match x with
+        Fun f -> f game y
+      | _ -> invalid_play ()
+
+let top_apply game x y =
+  game.app_counter <- 0;
+  apply game x y
+
 
 (* Card values *)
 
@@ -121,7 +132,10 @@ let inc = Fun (
     let i = int x in
     let slot = get_slot (proponent game) i in
     if slot.vitality > 0 then
-      slot.vitality <- min (slot.vitality + 1) 65535;
+      if game.auto then
+        slot.vitality <- slot.vitality - 1
+      else
+        slot.vitality <- min (slot.vitality + 1) 65535;
     identity
 )
 
@@ -130,7 +144,10 @@ let dec = Fun (
     let i = int x in
     let slot = get_slot (opponent game) (255 - i) in
     if slot.vitality > 0 then
-      slot.vitality <- min (slot.vitality - 1) 65535;
+      if game.auto then
+        slot.vitality <- min (slot.vitality + 1) 65535
+      else
+        slot.vitality <- slot.vitality - 1;
     identity
 )
 
@@ -153,7 +170,12 @@ let attack = Fun (
             if is_alive pslot then (
               let oslot = get_slot (opponent game) (255 - int j) in
               let w = oslot.vitality in
-              oslot.vitality <- max 0 (w - n * 9 / 10);
+              if game.auto then (
+                if w > 0 then
+                  oslot.vitality <- min (w + n * 9 / 10) 65535
+              )
+              else
+                oslot.vitality <- max 0 (w - n * 9 / 10);
             );
 
             identity
@@ -180,7 +202,12 @@ let help = Fun (
             if is_alive pslot then (
               let oslot = get_slot (opponent game) (int j) in
               let w = oslot.vitality in
-              oslot.vitality <- max 65535 (w + n * 11 / 10)
+              if game.auto then (
+                if w > 0 then
+                  oslot.vitality <- max 0 (w - n * 11 / 10)
+              )
+              else
+                oslot.vitality <- min (w + n * 11 / 10) 65535
             );
             
             identity
@@ -215,30 +242,3 @@ let zombie = Fun (
         identity
     )
 )
-
-
-(*************************************************)
-
-let init_slots () =
-  Array.init slots_len (
-    fun i -> 
-      { vitality = 10_000;
-        field = identity }
-  )
-
-let init_game () =
-  {
-    player0 = init_slots ();
-    player1 = init_slots ();
-    turn_counter = 1;
-    current_player = Player0;
-  }
-
-let next_player game =
-  (match game.current_player with
-       Player0 ->
-         game.current_player <- Player1
-     | Player1 ->
-         game.current_player <- Player0;
-         game.turn_counter <- game.turn_counter + 1
-  )
