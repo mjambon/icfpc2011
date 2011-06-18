@@ -1,0 +1,31 @@
+#! /bin/sh -e
+
+usage () {
+    echo "Official match between two strategies of our choice" >&2
+    echo "Usage: $0 STRATEGY1 STRATEGY2" >&2
+    exit 1
+}
+
+test -n "$2" || usage
+
+judge=ext/ltg.linux64
+prog1=./run1
+prog2=./run2
+strategy1=$1
+strategy2=$2
+
+make_prog1 () {
+    echo '#! /bin/sh -e' > $prog1
+    echo './ltg.opt compete $1 '$strategy1 >> $prog1
+    chmod 755 $prog1
+}
+
+make_prog2 () {
+    echo '#! /bin/sh -e' > $prog2
+    echo './ltg.opt compete $1 '$strategy2 >> $prog2
+    chmod 755 $prog2
+}
+
+make_prog1
+make_prog2
+$judge match $prog1 $prog2
