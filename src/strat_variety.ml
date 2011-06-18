@@ -1,5 +1,6 @@
 open State
 open Play
+open View
 
 let init_rng () =
   let state = Random.State.make [| |] in

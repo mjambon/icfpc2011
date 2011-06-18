@@ -78,7 +78,7 @@ let all_dead slots =
   slots_alive slots = 0
 
 let update game play =
-  let a = card_value_of_symbol play.card in
+  let a = value_of_card play.card in
   let slots = proponent game in
 
   game.auto <- true;
@@ -164,8 +164,3 @@ let init_game () =
     app_counter = 0;
     auto = true;
   }
-
-
-let is_legal game play =
-  (* TODO *)
-  true

@@ -1,3 +1,5 @@
+(* Command-line interface *)
+
 open Printf
 
 let parse_player interactive = function

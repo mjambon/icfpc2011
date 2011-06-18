@@ -1,3 +1,6 @@
+(* Type definitions for the state of the game including representation
+   of values. *)
+
 open Printf
 
 exception Invalid_play
@@ -26,12 +29,21 @@ type card =
 (* Name used for closure tracking (printing and debugging) *)
 type desc =
     Val of int
+      (* A simple value. *)
   | Prim of card
+      (* A primitive value.
+         Val 0 is used instead of Prim Zero.*)
   | Clo of desc * desc
+      (* A partially-applied primitive function *)
 
 type value =
     Int of int
   | Fun of desc * (game -> value -> value)
+      (*
+        A value is either an int or a function of one argument.
+        For inspection purposes, the structure of a function
+        is given by desc.
+      *)
 
 and slot = {
   mutable vitality : int; (* -1 .. 65535 *)
@@ -287,8 +299,8 @@ let attack =
               
               (* and then *)
               
-              if is_alive pslot then (
-                let oslot = get_slot (opponent game) (255 - int j) in
+              let oslot = get_slot (opponent game) (255 - int j) in
+              if is_alive oslot then (
                 let w = oslot.vitality in
                 if game.auto then (
                   if w > 0 then
@@ -317,25 +329,25 @@ let help =
           Fun (
             name,
             fun game n ->
-              let pslot = get_slot (proponent game) (int i) in
+              let sloti = get_slot (proponent game) (int i) in
               let n = int n in
-              let v = pslot.vitality in
+              let v = sloti.vitality in
               if n > v then
                 invalid_play ()
               else
-                pslot.vitality <- v - n;
+                sloti.vitality <- v - n;
               
               (* and then *)
               
-              if is_alive pslot then (
-                let oslot = get_slot (opponent game) (int j) in
-                let w = oslot.vitality in
+              let slotj = get_slot (proponent game) (int j) in
+              if is_alive slotj then (
+                let w = slotj.vitality in
                 if game.auto then (
                   if w > 0 then
-                    oslot.vitality <- max 0 (w - n * 11 / 10)
+                    slotj.vitality <- max 0 (w - n * 11 / 10)
                 )
                 else
-                  oslot.vitality <- min (w + n * 11 / 10) 65535
+                  slotj.vitality <- min (w + n * 11 / 10) 65535
               );
               
               identity
@@ -376,7 +388,7 @@ let zombie =
       )
   )
 
-let card_value_of_symbol = function
+let value_of_card = function
     I -> identity
   | Zero -> zero
   | Succ -> succ
