@@ -216,7 +216,7 @@ let rec play_game game interactive get0 print0 get1 print1 =
       score0, score1
   else (
     if interactive then (
-      printf "### Round %i ###\n" game.turn_counter;
+      printf "### turn %i ###\n" game.turn_counter;
       printf "*** player %i's turn, with slots:\n"
         (int_of_player game.current_player); 
       State.print_slots (proponent game);
