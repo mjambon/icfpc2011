@@ -1,6 +1,7 @@
 FILES[] =
   state
   play
+  strat_variety
   strategy
   main
 

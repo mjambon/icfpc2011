@@ -16,4 +16,5 @@ let default = dummy
 let all_strategies : (string * strategy) list = [
   "default", default; (* strategy used in the official submission! *)
   "dummy", dummy;
+  "variety", Strat_variety.variety;
 ]

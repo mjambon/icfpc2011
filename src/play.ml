@@ -47,6 +47,24 @@ let slot_number_of_string s =
   else 
     n
 
+let all_cards = [|
+  Identity;
+  Zero;
+  Succ;
+  Dbl;
+  Get;
+  Put;
+  Scomb;
+  Kcomb;
+  Inc;
+  Dec;
+  Attack;
+  Help;
+  Copy;
+  Revive;
+  Zombie;
+|]
+
 let card_symbol_of_string = function
     "I" -> Identity
   | "zero" -> Zero
@@ -190,7 +208,7 @@ let next_player game =
   )
 
 let rec play_game game interactive get0 print0 get1 print1 =
-  if game.turn_counter >= 100_000
+  if game.turn_counter > 100_000
     || all_dead game.player0
     || all_dead game.player1 then
       let score0 = slots_alive game.player0 in
@@ -234,3 +252,8 @@ let init_game () =
     app_counter = 0;
     auto = true;
   }
+
+
+let is_legal game play =
+  (* TODO *)
+  true
