@@ -4,23 +4,6 @@ open Printf
 
 open State
 
-type card_symbol =
-    Identity
-  | Zero
-  | Succ
-  | Dbl
-  | Get
-  | Put
-  | Scomb
-  | Kcomb
-  | Inc
-  | Dec
-  | Attack
-  | Help
-  | Copy
-  | Revive
-  | Zombie
-
 type left_or_right =
     Apply_card_to_slot (* left *)
   | Apply_slot_to_card (* right *)
@@ -28,7 +11,7 @@ type left_or_right =
 type play = {
   left_or_right : left_or_right;
   slot_number : int;
-  card_symbol : card_symbol;
+  card : card;
 }
 
 let left_or_right_of_string = function
@@ -47,77 +30,6 @@ let slot_number_of_string s =
   else 
     n
 
-let all_cards = [|
-  Identity;
-  Zero;
-  Succ;
-  Dbl;
-  Get;
-  Put;
-  Scomb;
-  Kcomb;
-  Inc;
-  Dec;
-  Attack;
-  Help;
-  Copy;
-  Revive;
-  Zombie;
-|]
-
-let card_symbol_of_string = function
-    "I" -> Identity
-  | "zero" -> Zero
-  | "succ" -> Succ
-  | "dbl" -> Dbl
-  | "get" -> Get
-  | "put" -> Put
-  | "S" -> Scomb
-  | "K" -> Kcomb
-  | "inc" -> Inc
-  | "dec" -> Dec
-  | "attack" -> Attack
-  | "help" -> Help
-  | "copy" -> Copy
-  | "revive" -> Revive
-  | "zombie" -> Zombie
-  | s -> invalid_arg ("card_symbol_of_string: " ^ s)
-
-let string_of_card_symbol = function
-    Identity -> "I"
-  | Zero -> "zero"
-  | Succ -> "succ"
-  | Dbl -> "dbl"
-  | Get -> "get"
-  | Put -> "put"
-  | Scomb -> "S"
-  | Kcomb -> "K"
-  | Inc -> "inc"
-  | Dec -> "dec"
-  | Attack -> "attack"
-  | Help -> "help"
-  | Copy -> "copy"
-  | Revive -> "revive"
-  | Zombie -> "zombie"
-
-let card_value_of_symbol = function
-    Identity -> identity
-  | Zero -> zero
-  | Succ -> succ
-  | Dbl -> dbl
-  | Get -> get
-  | Put -> put
-  | Scomb -> scomb
-  | Kcomb -> kcomb
-  | Inc -> inc
-  | Dec -> dec
-  | Attack -> attack
-  | Help -> help
-  | Copy -> copy
-  | Revive -> revive
-  | Zombie -> zombie
-
-
 let input_play interactive ic =
   if interactive then
     printf "(1) apply card to slot, or (2) apply slot to card?\n%!";
@@ -125,7 +37,7 @@ let input_play interactive ic =
   let card () =
     if interactive then
       printf "card name?\n%!";
-    card_symbol_of_string (input_line ic)
+    card_of_string (input_line ic)
   in
   let n () =
     if interactive then
@@ -146,14 +58,14 @@ let input_play interactive ic =
   {
     left_or_right = lr;
     slot_number = n;
-    card_symbol = card;
+    card = card;
   }
 
 let output_play oc x =
   if x.slot_number < 0 || x.slot_number >= slots_len then
     invalid_arg "output_play";
   fprintf oc "%s\n%!" (string_of_left_or_right x.left_or_right);
-  let a () = fprintf oc "%s\n%!" (string_of_card_symbol x.card_symbol) in
+  let a () = fprintf oc "%s\n%!" (string_of_card x.card) in
   let b () = fprintf oc "%s\n%!" (string_of_int x.slot_number) in
   match x.left_or_right with
       Apply_card_to_slot -> a (); b ()
@@ -166,7 +78,7 @@ let all_dead slots =
   slots_alive slots = 0
 
 let update game play =
-  let a = card_value_of_symbol play.card_symbol in
+  let a = card_value_of_symbol play.card in
   let slots = proponent game in
 
   game.auto <- true;

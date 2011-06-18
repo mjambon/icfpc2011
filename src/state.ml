@@ -6,15 +6,32 @@ let invalid_play () = raise Invalid_play
 
 let slots_len = 256
 
+type card =
+    I
+  | Zero
+  | Succ
+  | Dbl
+  | Get
+  | Put
+  | S
+  | K
+  | Inc
+  | Dec
+  | Attack
+  | Help
+  | Copy
+  | Revive
+  | Zombie
+
 (* Name used for closure tracking (printing and debugging) *)
-type name =
-    Int_name of int
-  | String_name of string
-  | App_name of name * name
+type desc =
+    Val of int
+  | Prim of card
+  | Clo of desc * desc
 
 type value =
     Int of int
-  | Fun of name * (game -> value -> value)
+  | Fun of desc * (game -> value -> value)
 
 and slot = {
   mutable vitality : int; (* -1 .. 65535 *)
@@ -95,40 +112,92 @@ let top_apply game x y =
 
 let name_of_value = function
     Fun (x, _) -> x
-  | Int n -> Int_name n
+  | Int n -> Val n
 
 let app a b =
-  App_name (a, name_of_value b)
+  Clo (a, name_of_value b)
+
+let card_of_string = function
+    "I" -> I
+  | "zero" -> Zero
+  | "succ" -> Succ
+  | "dbl" -> Dbl
+  | "get" -> Get
+  | "put" -> Put
+  | "S" -> S
+  | "K" -> K
+  | "inc" -> Inc
+  | "dec" -> Dec
+  | "attack" -> Attack
+  | "help" -> Help
+  | "copy" -> Copy
+  | "revive" -> Revive
+  | "zombie" -> Zombie
+  | s -> invalid_arg ("card_symbol_of_string: " ^ s)
+
+let string_of_card = function
+    I -> "I"
+  | Zero -> "zero"
+  | Succ -> "succ"
+  | Dbl -> "dbl"
+  | Get -> "get"
+  | Put -> "put"
+  | S -> "S"
+  | K -> "K"
+  | Inc -> "inc"
+  | Dec -> "dec"
+  | Attack -> "attack"
+  | Help -> "help"
+  | Copy -> "copy"
+  | Revive -> "revive"
+  | Zombie -> "zombie"
 
 let string_of_value x =
   let rec print buf = function
-      Int_name n -> bprintf buf "%i" n
-    | String_name s -> bprintf buf "%s" s
-    | App_name (a, b) ->
+      Val n -> bprintf buf "%i" n
+    | Prim x -> bprintf buf "%s" (string_of_card x)
+    | Clo (a, b) ->
         bprintf buf "%a(%a)" print a print b
   in
   let buf = Buffer.create 100 in
   print buf (name_of_value x);
   Buffer.contents buf
 
+let all_cards = [|
+  I;
+  Zero;
+  Succ;
+  Dbl;
+  Get;
+  Put;
+  S;
+  K;
+  Inc;
+  Dec;
+  Attack;
+  Help;
+  Copy;
+  Revive;
+  Zombie;
+|]
 
 (* Card values *)
 
-let identity = Fun (String_name "I", fun game x -> x)
+let identity = Fun (Prim I, fun game x -> x)
 
 let zero = Int 0
 
-let succ = Fun (String_name "succ",
+let succ = Fun (Prim Succ,
   fun game x -> 
     Int (min (int x + 1) 65535)
 )
 
-let dbl = Fun (String_name "dbl",
+let dbl = Fun (Prim Dbl,
   fun game x ->
     Int (min (2 * int x) 65535)
 )
 
-let get = Fun (String_name "get",
+let get = Fun (Prim Get,
   fun game x ->
     let i = int x in
     let slot = get_slot (proponent game) i in
@@ -138,12 +207,12 @@ let get = Fun (String_name "get",
       invalid_play ()
 )
 
-let put = Fun (String_name "put",
+let put = Fun (Prim Put,
   fun game x -> identity
 )
 
 let scomb =
-  let name = String_name "S" in
+  let name = Prim S in
   Fun (
     name,
     fun game f ->
@@ -163,7 +232,7 @@ let scomb =
   )
 
 let kcomb =
-  let name = String_name "K" in
+  let name = Prim K in
   Fun (
     name,
     fun game x ->
@@ -171,7 +240,7 @@ let kcomb =
       Fun (name, fun game y -> x)
 )
 
-let inc = Fun (String_name "inc",
+let inc = Fun (Prim Inc,
   fun game x ->
     let i = int x in
     let slot = get_slot (proponent game) i in
@@ -183,7 +252,7 @@ let inc = Fun (String_name "inc",
     identity
 )
 
-let dec = Fun (String_name "dec",
+let dec = Fun (Prim Dec,
   fun game x ->
     let i = int x in
     let slot = get_slot (opponent game) (255 - i) in
@@ -196,7 +265,7 @@ let dec = Fun (String_name "dec",
 )
 
 let attack =
-  let name = String_name "attack" in
+  let name = Prim Attack in
   Fun (
     name,
     fun game i ->
@@ -236,7 +305,7 @@ let attack =
     
 
 let help =
-  let name = String_name "help" in
+  let name = Prim Help in
   Fun (
     name,
     fun game i ->
@@ -274,12 +343,12 @@ let help =
       )
   )
 
-let copy = Fun (String_name "copy",
+let copy = Fun (Prim Copy,
   fun game i ->
     (get_slot (opponent game) (int i)).field
 )
 
-let revive = Fun (String_name "revive",
+let revive = Fun (Prim Revive,
   fun game i ->
     let slot = get_slot (proponent game) (int i) in
     let v = slot.vitality in
@@ -289,7 +358,7 @@ let revive = Fun (String_name "revive",
 )
 
 let zombie =
-  let name = String_name "zombie" in
+  let name = Prim Zombie in
   Fun (
     name,
     fun game i ->
@@ -306,6 +375,24 @@ let zombie =
           identity
       )
   )
+
+let card_value_of_symbol = function
+    I -> identity
+  | Zero -> zero
+  | Succ -> succ
+  | Dbl -> dbl
+  | Get -> get
+  | Put -> put
+  | S -> scomb
+  | K -> kcomb
+  | Inc -> inc
+  | Dec -> dec
+  | Attack -> attack
+  | Help -> help
+  | Copy -> copy
+  | Revive -> revive
+  | Zombie -> zombie
+
 
 (* Printing and debugging *)
 

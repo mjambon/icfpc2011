@@ -21,7 +21,7 @@ let random_play rand =
   {
     left_or_right = random_lr rand;
     slot_number = random_slot rand;
-    card_symbol = random_card rand;
+    card = random_card rand;
   }
 
 let rec legal_random_play rand game =
