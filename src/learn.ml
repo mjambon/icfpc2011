@@ -10,7 +10,7 @@ type strategy = {
 
 let create_strategy name f = {
   sub_strategy_name = name;
-  success = 0.;
+  success = 1.;
   strat_fun = f;
 }
 
