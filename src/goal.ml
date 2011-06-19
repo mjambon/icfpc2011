@@ -15,7 +15,8 @@ open State
   A goal is an expression that we would like to build.
 *)
 type goal =
-    Left of card * goal (* apply card to slot *)
+    Any
+  | Left of card * goal (* apply card to slot *)
   | Right of goal * card (* apply slot to card *)
   | Range of range
   | Card of card
@@ -29,6 +30,12 @@ and high_low = High | Low
 
 and range = (high_low option * int option * int option)
 
+
+
+let rec alt = function
+    [] -> assert false
+  | [x] -> x
+  | x :: l -> Alt (x, alt l)
 
 let exact x = Range (None, Some x, Some x)
 let high mini maxi = Range (Some High, Some mini, Some maxi)
@@ -49,7 +56,8 @@ let in_range (_, mini, maxi) x =
 
 let rec matches goal value_desc =
   match goal, value_desc with
-      Range r, Val x -> in_range r x
+      Any, _ -> true
+    | Range r, Val x -> in_range r x
     | Range r, Prim Zero -> in_range r 0
     | Card Zero, Val 0 -> true
     | Card a, Prim b -> a = b
@@ -59,8 +67,19 @@ let rec matches goal value_desc =
     | _ -> false
 
 
+(* Count the number of field values that match the pattern *)
+let count_slots game goal : int =
+  Array.fold_left (
+    fun acc x -> 
+      if matches goal (name_of_value x.field) then
+        acc + 1
+      else
+        acc
+  ) 0 (proponent game)
+
+
 (* Find a slot whose field values match the pattern *)
-let find_slot rand goal game return : 'a option =
+let find_slot rand game goal return : 'a option =
   let slots = proponent game in
   let len = Array.length slots in
   let offset = rand len in
@@ -86,13 +105,19 @@ let validate make_play =
     if View.is_legal game play then Some play
     else None
 
+type result =
+    Success
+  | Failure
+  | Play of Play.play
+
 (* Try to find a play that creates a value closer to the goal *)
-let achieve_goal rand goal game : Play.play option =
+let achieve_goal rand numcopies game goal : result =
   let rec is_buildable goal =
     match goal with
-        Left (card, goal) ->
+        Any -> None
+      | Left (card, goal) ->
           (match
-             find_slot rand goal game
+             find_slot rand game goal
                (validate (Play.left card))
            with
                None -> (* top goal not buildable *) is_buildable goal
@@ -100,7 +125,7 @@ let achieve_goal rand goal game : Play.play option =
           )
       | Right (goal, card) ->
           (match
-             find_slot rand goal game
+             find_slot rand game goal
                (validate (fun i -> Play.right i card))
            with
                None -> (* top goal not buildable *) is_buildable goal
@@ -113,14 +138,21 @@ let achieve_goal rand goal game : Play.play option =
               None -> is_buildable b
             | Some _ as x -> x
   in
-  is_buildable goal
+  let n = count_slots game goal in
+  if n >= numcopies then
+    Success
+  else
+    match is_buildable goal with
+        Some play -> Play play
+      | None -> Failure
 
 
 (* Try to progress toward one of the goals, in that order of preference *)
-let rec achieve rand (goals : goal list) game : Play.play option =
+let rec achieve rand numcopies game (goals : goal list) : Play.play option =
   match goals with
       [] -> None
     | goal :: l ->
-        match achieve_goal rand goal game with
-            Some play -> Some play
-          | None -> achieve rand l game
+        match achieve_goal rand numcopies game goal with
+            Play play -> Some play
+          | Success
+          | Failure -> achieve rand numcopies game l
