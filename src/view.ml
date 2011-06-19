@@ -3,6 +3,44 @@
 open State
 open Play
 
+type indicators = {
+  pro_vitality_sum : int;
+  opp_vitality_sum : int;
+
+  pro_alive_count : int;
+  opp_alive_count : int;
+
+  pro_non_identity_count : int;
+  opp_non_identity_count : int;
+}
+
+let sum_vitality a =
+  Array.fold_left
+    (fun acc x -> acc + x.vitality) 0 a
+
+let count_alive a =
+  Array.fold_left
+    (fun acc x -> if is_alive x then acc + 1 else acc) 0 a
+
+let count_non_identity a =
+  Array.fold_left
+    (fun acc x -> if x.field != identity then acc + 1 else acc) 0 a
+
+let compute_indicators game =
+  let pro = proponent game in
+  let opp = opponent game in
+  {
+    pro_vitality_sum = sum_vitality pro;
+    opp_vitality_sum = sum_vitality opp;
+    
+    pro_alive_count = count_alive pro;
+    opp_alive_count = count_alive opp;
+    
+    pro_non_identity_count = count_non_identity pro;
+    opp_non_identity_count = count_non_identity opp;
+  }
+
+
 let is_int = function
     Int _ -> true
   | Fun _ -> false
