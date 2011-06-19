@@ -3,6 +3,7 @@ FILES[] =
   play
   view
   learn
+  goal
   strat_variety
   trick
   strat_choice
@@ -20,8 +21,6 @@ OCAMLDEP_MODULES_ENABLED = false
 clean:
         rm -f *.o *.a *.cm* *~ *.annot *.opt *.run
 
-#USE_OCAMLFIND = true
-#OCAMLPACKS = pcre
 OCAMLFLAGS = -dtypes -g
 
 OCamlProgram(ltg, $(FILES))

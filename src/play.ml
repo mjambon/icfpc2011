@@ -14,6 +14,19 @@ type play = {
   card : card;
 }
 
+let right pos card = {
+  left_or_right = Apply_slot_to_card;
+  slot_number = pos;
+  card = card;
+}
+
+let left card pos = {
+  left_or_right = Apply_slot_to_card;
+  card = card;
+  slot_number = pos;
+}
+
+
 let left_or_right_of_string = function
     "1" -> Apply_card_to_slot
   | "2" -> Apply_slot_to_card

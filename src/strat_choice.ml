@@ -58,7 +58,7 @@ let choice () : game -> play =
     get_health = get_health_build;
     measure_success_after = 10;
     sub_strategies = [
-      create_strategy "trick1" (trick1 rand);
+      create_strategy "random" (Strat_variety.variety ());
     ]
   }
   in
@@ -67,7 +67,8 @@ let choice () : game -> play =
     get_health = get_health_kill;
     measure_success_after = 10;
     sub_strategies = [
-      create_strategy "trick2" (trick2 rand);
+      create_strategy "random" (Strat_variety.variety ());
+      (*create_strategy "helper" Trick.helper;*)
     ];
   }
   in
