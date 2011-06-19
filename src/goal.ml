@@ -80,6 +80,7 @@ let count_slots game goal : int =
 
 
 (* Find a slot whose field values match the pattern *)
+(* TODO: optimize search for ints following the High and Low hints *)
 let find_slot rand game goal return : 'a option =
   let slots = proponent game in
   let len = Array.length slots in
