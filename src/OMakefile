@@ -2,7 +2,10 @@ FILES[] =
   state
   play
   view
+  learn
   strat_variety
+  trick
+  strat_choice
   strategy
   main
 

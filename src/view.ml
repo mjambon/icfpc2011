@@ -26,7 +26,7 @@ let count_non_identity a =
   Array.fold_left
     (fun acc x -> if x.field != identity then acc + 1 else acc) 0 a
 
-let compute_indicators game =
+let get_indicators game =
   let pro = proponent game in
   let opp = opponent game in
   {

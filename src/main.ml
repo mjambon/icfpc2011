@@ -9,7 +9,7 @@ let parse_player interactive = function
       get, print
   | s ->
       let strategy =
-        try List.assoc s Strategy.all_strategies
+        try List.assoc s Strategy.top_strategies
         with Not_found -> failwith ("Unknown strategy " ^ s)
       in
       let get = strategy () in
@@ -32,7 +32,7 @@ built-in strategies:
 %s
 "
       Sys.argv.(0) Sys.argv.(0) Sys.argv.(0)
-      (String.concat "\n" (List.map fst Strategy.all_strategies))
+      (String.concat "\n" (List.map fst Strategy.top_strategies))
   in
 
   Arg.parse options anon_fun usage_msg;
