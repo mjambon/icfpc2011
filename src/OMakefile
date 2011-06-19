@@ -1,4 +1,5 @@
 FILES[] =
+  debug
   state
   play
   view

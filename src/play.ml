@@ -14,18 +14,32 @@ type play = {
   card : card;
 }
 
+let left card pos = {
+  left_or_right = Apply_card_to_slot;
+  card = card;
+  slot_number = pos;
+}
+
 let right pos card = {
   left_or_right = Apply_slot_to_card;
   slot_number = pos;
   card = card;
 }
 
-let left card pos = {
-  left_or_right = Apply_slot_to_card;
-  card = card;
-  slot_number = pos;
-}
 
+(* debugging *)
+let string_of_play game x =
+  let slot = (proponent game).(x.slot_number) in
+  match x.left_or_right with
+      Apply_card_to_slot ->
+        sprintf "left %s #%i=%s"
+          (string_of_value (value_of_card x.card))
+          x.slot_number (string_of_value slot.field)
+
+    | Apply_slot_to_card ->
+        sprintf "right #%i=%s %s" 
+          x.slot_number (string_of_value slot.field)
+          (string_of_value (value_of_card x.card))
 
 let left_or_right_of_string = function
     "1" -> Apply_card_to_slot

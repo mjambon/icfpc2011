@@ -9,6 +9,7 @@
   - copying and using values from the opponent
 *)
 
+open Debug
 open State
 
 (*
@@ -102,8 +103,12 @@ let find_slot rand game goal return : 'a option =
 let validate make_play =
   fun game i ->
     let play = make_play i in
-    if View.is_legal game play then Some play
-    else None
+    if View.is_legal game play then
+      Some play
+    else (
+      logf "illegal play avoided";
+      None
+    )     
 
 type result =
     Success
@@ -139,20 +144,25 @@ let achieve_goal rand numcopies game goal : result =
             | Some _ as x -> x
   in
   let n = count_slots game goal in
-  if n >= numcopies then
+  if n >= numcopies then (
+    logf "%i >= %i (numcopies) -> Success" n numcopies;
     Success
+  )
   else
     match is_buildable goal with
         Some play -> Play play
-      | None -> Failure
+      | None ->
+          logf "not buildable";
+          Failure
 
+let dummy_play = Play.left I 0
 
 (* Try to progress toward one of the goals, in that order of preference *)
-let rec achieve rand numcopies game (goals : goal list) : Play.play option =
+let rec achieve rand game (goals : (int * goal) list) : Play.play =
   match goals with
-      [] -> None
-    | goal :: l ->
+      [] -> dummy_play
+    | (numcopies, goal) :: l ->
         match achieve_goal rand numcopies game goal with
-            Play play -> Some play
+            Play play -> play
           | Success
-          | Failure -> achieve rand numcopies game l
+          | Failure -> achieve rand game l

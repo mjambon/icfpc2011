@@ -18,7 +18,10 @@ let parse_player interactive = function
 
 let main () =
   let args = ref [] in
-  let options = [] in
+  let options = [
+    "-d", Arg.Set Debug.debug,
+    "debugging mode";
+  ] in
   let anon_fun = (fun s -> args := s :: !args) in
   let usage_msg =
     sprintf "\

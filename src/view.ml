@@ -1,5 +1,7 @@
 (* Utilities for analyzing the game *)
 
+open Debug
+
 open State
 open Play
 
@@ -170,4 +172,5 @@ let is_legal game play =
     check_prim_arg game prim argn x
 
   with Illegal ->
+    logf "illegal play: %s" (string_of_play game play);
     false
